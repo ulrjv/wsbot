@@ -15,19 +15,31 @@ const execFileAsync = promisify(execFile);
 
 // Configurar ffmpeg
 const ffmpegStatic = require('ffmpeg-static');
-const ffmpegWinget = path.join(
-    process.env.LOCALAPPDATA,
-    'Microsoft',
-    'WinGet',
-    'Packages',
-    'yt-dlp.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe',
-    'ffmpeg-N-121583-g4348bde2d2-win64-gpl',
-    'bin',
-    'ffmpeg.exe'
-);
 
-// Usar ffmpeg de winget si existe, sino usar ffmpeg-static
-const ffmpegPath = fs.existsSync(ffmpegWinget) ? ffmpegWinget : ffmpegStatic;
+// Detectar si estamos en Windows y si existe la instalación de winget
+let ffmpegPath = ffmpegStatic;
+if (process.env.LOCALAPPDATA) {
+    const ffmpegWinget = path.join(
+        process.env.LOCALAPPDATA,
+        'Microsoft',
+        'WinGet',
+        'Packages',
+        'yt-dlp.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe',
+        'ffmpeg-N-121583-g4348bde2d2-win64-gpl',
+        'bin',
+        'ffmpeg.exe'
+    );
+    
+    if (fs.existsSync(ffmpegWinget)) {
+        ffmpegPath = ffmpegWinget;
+    }
+}
+
+// En Docker/Linux, intentar usar ffmpeg del sistema
+if (process.platform === 'linux' && fs.existsSync('/usr/bin/ffmpeg')) {
+    ffmpegPath = '/usr/bin/ffmpeg';
+}
+
 ffmpeg.setFfmpegPath(ffmpegPath);
 
 const client = new Client({
