@@ -1393,17 +1393,31 @@ client.on('message', async (msg) => {
                 tiempos.forEach(t => {
                     const linea = t['ayto:etiqLinea'] || '?';
                     const destino1 = t['ayto:destino1'] || 'Desconocido';
-                    const tiempo1 = t['ayto:tiempo1'] ? `${Math.floor(t['ayto:tiempo1'] / 60)} min` : 'N/A';
+                    const segundos1 = t['ayto:tiempo1'];
                     
-                    respuesta += `🔢 Línea *${linea}* → ${destino1}\n`;
-                    respuesta += `⏱️ ${tiempo1}\n`;
+                    if (segundos1) {
+                        const minutos = Math.floor(segundos1 / 60);
+                        const ahora = new Date();
+                        const llegada = new Date(ahora.getTime() + segundos1 * 1000);
+                        const horaLlegada = llegada.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        
+                        respuesta += `🔢 Línea *${linea}* → ${destino1}\n`;
+                        respuesta += `⏱️ ${minutos} min (${horaLlegada})\n`;
+                    } else {
+                        respuesta += `🔢 Línea *${linea}* → ${destino1}\n`;
+                        respuesta += `⏱️ N/A\n`;
+                    }
                     
                     // Si hay segundo bus
                     if (t['ayto:destino2'] && t['ayto:tiempo2']) {
                         const destino2 = t['ayto:destino2'];
-                        const tiempo2 = `${Math.floor(t['ayto:tiempo2'] / 60)} min`;
+                        const segundos2 = t['ayto:tiempo2'];
+                        const minutos2 = Math.floor(segundos2 / 60);
+                        const llegada2 = new Date(new Date().getTime() + segundos2 * 1000);
+                        const horaLlegada2 = llegada2.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+                        
                         respuesta += `🔢 Línea *${linea}* → ${destino2}\n`;
-                        respuesta += `⏱️ ${tiempo2}\n`;
+                        respuesta += `⏱️ ${minutos2} min (${horaLlegada2})\n`;
                     }
                     respuesta += '\n';
                 });
