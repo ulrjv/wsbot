@@ -122,32 +122,74 @@ npm start
 
 ---
 
-## 🎯 Funcionalidades
+## 📝 Comandos Disponibles
+
+**Para ver todos los comandos en WhatsApp, envía:** `!ayuda`
+
+### 🎵 AUDIO
+- `!ytmp3 [URL]` - Descargar canción de YouTube
+- `!speed [velocidad]` - Cambiar velocidad de audio (responder a audio)
+  - Ejemplo: `!speed 1.5` (responder a un audio)
+- `!reverse` - Invertir audio (responder a audio)
+- `!extractaudio` - Extraer audio de un video (responder a video)
+
+### 🖼️ IMAGEN
+- `!resize [ancho] [alto]` - Redimensionar imagen (responder a imagen)
+  - Ejemplo: `!resize 500 500` (responder a una imagen)
+- `!grayscale` - Convertir a blanco y negro (responder a imagen)
+- `!filter [tipo]` - Aplicar filtro (responder a imagen)
+  - Filtros disponibles: `blur`, `sepia`, `contrast`, `brightness`, `invert`
+  - Ejemplo: `!filter blur` (responder a imagen)
+- `!meme texto arriba | texto abajo` - Crear meme (responder a imagen)
+  - Ejemplo: `!meme Yo programando | A las 3am` (responder a imagen)
+
+### 🚫 MODERACIÓN
+
+**Blacklist de palabras:**
+- `!blacklist` - Ver palabras bloqueadas
+- `!blacklist add [palabra]` - Agregar palabra prohibida
+- `!blacklist remove [palabra]` - Quitar palabra
+- `!blacklist clear` - Limpiar toda la lista
+
+**Ban de imágenes:**
+- `!banimagen` - Banear imagen (responder a imagen NSFW)
+- `!banimagen list` - Ver imágenes baneadas
+- `!banimagen remove [#]` - Quitar imagen del ban
+- `!banimagen clear` - Limpiar lista completa
+
+**Mutear usuarios:**
+- `!mutear [razón]` - Mutear usuario (responder a mensaje del usuario)
+- `!mutear list` - Ver usuarios muteados
+- `!mutear unmute` - Desmutear usuario (responder a mensaje)
+- `!mutear clear` - Limpiar lista de muteados
+
+### 🚌 TUS SANTANDER (Transporte Público)
+- `!bus paradas` - Ver todas las paradas de autobús (462 paradas)
+- `!bus lineas` - Ver todas las líneas disponibles (32 líneas)
+- `!bus [número]` - Próximos buses en una parada
+  - Ejemplo: `!bus 315` - Ver buses que llegan a parada 315
+
+### 👥 GRUPO
+- `!todos` - Mencionar a todos los participantes del grupo
+- `!sticker` - Convertir imagen a sticker (responder a imagen)
+
+---
+
+## 🎯 Funcionalidades Técnicas
 
 ### 1. **Moderación Automática con IA**
 
 #### a) Filtro NSFW (TensorFlow + NSFWJS)
-```javascript
-// Detecta contenido pornográfico/hentai con >60% confianza
-const predictions = await model.classify(imagen);
-if (predictions.porn > 0.6 || predictions.hentai > 0.6) {
-    await msg.delete(true); // Elimina mensaje
-}
-```
-
-**Categorías detectadas:** Porn, Hentai, Sexy, Neutral, Drawing
+- Escanea automáticamente todas las imágenes recibidas
+- Detecta contenido pornográfico/hentai con >60% confianza
+- Elimina automáticamente imágenes NSFW
+- **Categorías detectadas:** Porn, Hentai, Sexy, Neutral, Drawing
 
 #### b) Perceptual Hashing de Imágenes
-```javascript
-// Algoritmo:
-// 1. Redimensiona imagen a 8x8 píxeles
-// 2. Convierte a escala de grises
-// 3. Calcula promedio de píxeles
-// 4. Genera hash binario de 64 bits
-// 5. Compara con Hamming distance (85% threshold)
-
-Ejemplo de hash: "1010011100110101..." (64 caracteres)
-```
+- Genera hash único para cada imagen
+- Compara con imágenes previamente baneadas
+- Algoritmo de Hamming distance (85% threshold)
+- Permite detectar imágenes similares/editadas
 
 **Almacenamiento:** `banned_images.json`
 

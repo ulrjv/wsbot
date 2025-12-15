@@ -4,12 +4,13 @@ Bot de WhatsApp con detección NSFW, moderación, descarga de medios y consulta 
 
 ## 🚀 Características
 
-- ✅ Detección automática de contenido NSFW con TensorFlow.js
-- 🚫 Sistema de moderación con baneos y silenciados
-- 🎵 Descarga de audio de YouTube/Spotify
-- 🎥 Descarga de videos de redes sociales (TikTok, Instagram, Twitter, YouTube)
-- 🚌 Consulta en tiempo real del transporte público TUS Santander
-- 📱 Comandos de utilidad (stickers, info del bot, etc.)
+- ✅ **Moderación automática** con detección NSFW (TensorFlow.js)
+- 🚫 **Sistema de blacklist** de palabras, imágenes y usuarios
+- 🎵 **Procesamiento de audio** (velocidad, reverse, extracción)
+- 🖼️ **Edición de imágenes** (resize, filtros, memes)
+- 🚌 **TUS Santander** en tiempo real (paradas, líneas, estimaciones)
+- 👥 **Comandos de grupo** (menciones, stickers)
+- 🛡️ **Anti-detección** (rate limiting, delays humanizados)
 
 ## 📋 Requisitos Previos
 
@@ -82,38 +83,34 @@ Para instrucciones detalladas de Docker, consulta [README-DOCKER.md](documentaci
 
 ## 📖 Comandos Disponibles
 
-### 🚌 Comandos TUS Santander
+**📋 Para ver la lista completa desde WhatsApp:** Envía `!ayuda`
 
-- `!bus paradas` - Lista todas las paradas de autobús disponibles
-- `!bus lineas` - Muestra todas las líneas de autobús
-- `!bus [número]` - Consulta tiempos de espera para una parada específica
-  - Ejemplo: `!bus 315` muestra los próximos autobuses en la parada 315
+### 🎵 Audio
+- `!ytmp3 [URL]` - Descargar audio de YouTube
+- `!speed [velocidad]` - Cambiar velocidad (responder a audio)
+- `!reverse` - Invertir audio (responder a audio)
+- `!extractaudio` - Extraer audio de video (responder a video)
 
-### 🎵 Comandos de Música
+### 🖼️ Imagen
+- `!resize [ancho] [alto]` - Redimensionar (responder a imagen)
+- `!grayscale` - Blanco y negro (responder a imagen)
+- `!filter [tipo]` - Aplicar filtro: blur, sepia, contrast, brightness, invert
+- `!meme texto arriba | texto abajo` - Crear meme (responder a imagen)
 
-- `!musica <URL>` - Descarga audio de YouTube/Spotify
-  - Ejemplo: `!musica https://youtube.com/watch?v=...`
-- `!spotify <URL>` - Descarga playlist de Spotify
-  - Ejemplo: `!spotify https://open.spotify.com/playlist/...`
+### 🚫 Moderación
+- `!blacklist` - Ver/agregar/eliminar palabras prohibidas
+- `!banimagen` - Banear imágenes NSFW (responder a imagen)
+- `!mutear` - Silenciar usuarios (responder a mensaje)
 
-### 🎥 Comandos de Video
+### 🚌 TUS Santander
+- `!bus paradas` - Lista todas las paradas (462)
+- `!bus lineas` - Muestra todas las líneas (32)
+- `!bus [número]` - Próximos buses en tiempo real
+  - Ejemplo: `!bus 315`
 
-- `!video <URL>` - Descarga videos de TikTok, Instagram, Twitter, YouTube
-  - Ejemplo: `!video https://tiktok.com/@user/video/...`
-
-### 🛡️ Comandos de Moderación (Solo Admins)
-
-- `!ban @usuario` - Banea a un usuario
-- `!unban @usuario` - Desbanea a un usuario
-- `!mute @usuario` - Silencia a un usuario
-- `!unmute @usuario` - Quita el silencio a un usuario
-- `!admins` - Lista los administradores del grupo
-- `!info` - Muestra información del bot
-
-### 🎨 Otros Comandos
-
-- `!sticker` - Convierte imagen/video a sticker (responder a un mensaje con media)
-- `!ping` - Verifica si el bot está activo
+### 👥 Grupo
+- `!todos` - Mencionar a todos
+- `!sticker` - Convertir imagen a sticker
 
 ## 🔧 Configuración
 
