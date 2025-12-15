@@ -44,7 +44,20 @@ ffmpeg.setFfmpegPath(ffmpegPath);
 
 const client = new Client({
     authStrategy: new LocalAuth(),
-    puppeteer: { args: ['--no-sandbox'] }
+    puppeteer: { 
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-accelerated-2d-canvas',
+            '--no-first-run',
+            '--no-zygote',
+            '--disable-gpu',
+            // User agent realista para parecer navegador normal
+            '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        ],
+        headless: true
+    }
 });
 
 let model;
@@ -54,6 +67,14 @@ let bannedImageHashes = [];
 const BANNED_IMAGES_FILE = './banned_images.json';
 let mutedUsers = [];
 const MUTED_USERS_FILE = './muted_users.json';
+
+// Sistema de Rate Limiting para evitar detección como bot
+const rateLimits = new Map(); // userId -> { lastCommand: timestamp, commandCount: number, downloadCount: number }
+const RATE_LIMIT_WINDOW = 60000; // 1 minuto
+const MAX_COMMANDS_PER_MINUTE = 5;
+const MAX_DOWNLOADS_PER_HOUR = 10;
+const MIN_RESPONSE_DELAY = 1500; // 1.5 segundos mínimo antes de responder
+const MAX_RESPONSE_DELAY = 4000; // 4 segundos máximo (parecer humano)
 
 // Cargar blacklist al iniciar
 if (fs.existsSync(BLACKLIST_FILE)) {
@@ -99,6 +120,60 @@ function guardarMutedUsers() {
 
 function isUserMuted(userId) {
     return mutedUsers.some(muted => muted.userId === userId);
+}
+
+// Sistema anti-detección: Rate limiting y delays humanizados
+function checkRateLimit(userId, isDownload = false) {
+    const now = Date.now();
+    const userLimit = rateLimits.get(userId) || { 
+        lastCommand: 0, 
+        commandCount: 0, 
+        downloadCount: 0,
+        lastDownload: 0 
+    };
+    
+    // Resetear contador si pasó 1 minuto
+    if (now - userLimit.lastCommand > RATE_LIMIT_WINDOW) {
+        userLimit.commandCount = 0;
+    }
+    
+    // Resetear descargas si pasó 1 hora
+    if (now - userLimit.lastDownload > 3600000) {
+        userLimit.downloadCount = 0;
+    }
+    
+    // Verificar límites
+    if (userLimit.commandCount >= MAX_COMMANDS_PER_MINUTE) {
+        return { allowed: false, reason: 'Demasiados comandos. Espera un minuto.' };
+    }
+    
+    if (isDownload && userLimit.downloadCount >= MAX_DOWNLOADS_PER_HOUR) {
+        return { allowed: false, reason: 'Límite de descargas alcanzado. Espera una hora.' };
+    }
+    
+    // Actualizar contadores
+    userLimit.commandCount++;
+    userLimit.lastCommand = now;
+    if (isDownload) {
+        userLimit.downloadCount++;
+        userLimit.lastDownload = now;
+    }
+    rateLimits.set(userId, userLimit);
+    
+    return { allowed: true };
+}
+
+// Delay aleatorio para parecer humano (1.5 - 4 segundos)
+async function humanDelay() {
+    const delay = Math.floor(Math.random() * (MAX_RESPONSE_DELAY - MIN_RESPONSE_DELAY)) + MIN_RESPONSE_DELAY;
+    await new Promise(resolve => setTimeout(resolve, delay));
+}
+
+// Simular "escribiendo..." por un tiempo aleatorio
+async function simulateTyping(chat) {
+    const typingTime = Math.floor(Math.random() * 2000) + 1000; // 1-3 segundos
+    await chat.sendStateTyping();
+    await new Promise(resolve => setTimeout(resolve, typingTime));
 }
 
 function verificarBlacklist(texto) {
@@ -495,12 +570,12 @@ function iniciarConsolaInteractiva() {
     console.log('  send [ID] [mensaje] - Enviar mensaje a chat o grupo');
     console.log('  monitor [ID] - Monitorear mensajes de un chat en tiempo real');
     console.log('  stop - Detener monitoreo actual');
-    console.log('  broadcast [mensaje] - Enviar mensaje a todos los chats');
     console.log('  stats - Ver estadísticas del bot');
     console.log('  groups - Listar solo grupos');
     console.log('  leave [ID] - Salir de un grupo');
     console.log('  Ejemplo: send 0 Hola desde consola (usar el número de la lista)');
-    console.log('  exit - Salir\n');
+    console.log('  exit - Salir');
+    console.log('\n⚠️  Nota: "broadcast" deshabilitado por riesgo de ban\n');
 
     let chatsList = [];
     let monitoringChatId = null;
@@ -586,27 +661,12 @@ function iniciarConsolaInteractiva() {
             if (!mensaje) {
                 console.log('❌ Uso: broadcast [mensaje]');
             } else {
-                try {
-                    const chats = await client.getChats();
-                    let enviados = 0;
-                    
-                    console.log(`📢 Enviando mensaje a ${chats.length} chats...`);
-                    
-                    for (const chat of chats) {
-                        try {
-                            await client.sendMessage(chat.id._serialized, mensaje);
-                            enviados++;
-                            // Delay para evitar spam
-                            await new Promise(resolve => setTimeout(resolve, 1000));
-                        } catch (e) {
-                            console.log(`❌ Error enviando a ${chat.name}: ${e.message}`);
-                        }
-                    }
-                    
-                    console.log(`✅ Mensaje enviado a ${enviados}/${chats.length} chats\n`);
-                } catch (e) {
-                    console.log('❌ Error en broadcast:', e.message);
-                }
+                console.log('⚠️  ADVERTENCIA: broadcast puede ser detectado como spam por WhatsApp');
+                console.log('⚠️  Esto aumenta el riesgo de ban. ¿Continuar? (escribe "si" para confirmar)');
+                
+                // No implementar confirmación automática para evitar uso accidental
+                console.log('❌ Comando deshabilitado por seguridad. Usa "send" individualmente.');
+                console.log('💡 Alternativa: Crea un grupo y envía el mensaje ahí.');
             }
         } else if (input === 'chats') {
             try {
@@ -708,6 +768,31 @@ function iniciarConsolaInteractiva() {
 
 let consolaMonitor = null;
 
+// Estadísticas de uso para auto-regulación
+let sessionStats = {
+    startTime: Date.now(),
+    totalCommands: 0,
+    totalDownloads: 0,
+    lastActivity: Date.now()
+};
+
+// Auto-regulación: Advertir si uso excesivo
+setInterval(() => {
+    const horasActivo = (Date.now() - sessionStats.startTime) / 3600000;
+    
+    if (horasActivo > 12) {
+        console.log('\n⚠️  ADVERTENCIA: Bot activo por más de 12 horas');
+        console.log('⚠️  Recomendación: Reinicia el bot para evitar detección');
+        console.log(`📊 Comandos totales: ${sessionStats.totalCommands}`);
+        console.log(`📥 Descargas totales: ${sessionStats.totalDownloads}\n`);
+    }
+    
+    if (sessionStats.totalDownloads > 50) {
+        console.log('\n⚠️  ADVERTENCIA: Más de 50 descargas realizadas');
+        console.log('⚠️  Alto riesgo de detección. Considera reiniciar.\n');
+    }
+}, 3600000); // Verificar cada hora
+
 client.on('qr', (qr) => {
     qrcode.generate(qr, { small: true });
     console.log('ESCANEA EL QR AHORA');
@@ -715,6 +800,12 @@ client.on('qr', (qr) => {
 
 client.on('ready', () => {
     console.log('✅ Bot Guardián ACTIVO y LISTO.');
+    console.log('🛡️  Sistema anti-detección activado:');
+    console.log('   - Rate limiting: 5 comandos/min, 10 descargas/hora');
+    console.log('   - Delays humanizados: 1.5-4 segundos');
+    console.log('   - Typing simulation activado');
+    console.log('   - Broadcast deshabilitado\n');
+    sessionStats.startTime = Date.now();
     consolaMonitor = iniciarConsolaInteractiva();
 });
 client.on('message', async (msg) => {
@@ -743,10 +834,38 @@ client.on('message', async (msg) => {
 
         const comando = msg.body.split(' ')[0];
         const args = msg.body.split(' ').slice(1);
+        const userId = msg.author || msg.from;
 
-        // Incrementar contador de comandos si empieza con !
-        if (comando.startsWith('!') && consolaMonitor) {
-            consolaMonitor.incrementCommands();
+        // Solo aplicar rate limiting y delays a comandos (que empiecen con !)
+        if (comando.startsWith('!')) {
+            // Incrementar contador de comandos
+            if (consolaMonitor) consolaMonitor.incrementCommands();
+            sessionStats.totalCommands++;
+            sessionStats.lastActivity = Date.now();
+            
+            // Verificar rate limiting
+            const isDownloadCommand = ['!musica', '!spotify', '!video', '!ytmp3', '!tiktok', '!insta', '!tw'].includes(comando);
+            const rateCheck = checkRateLimit(userId, isDownloadCommand);
+            
+            if (!rateCheck.allowed) {
+                await humanDelay(); // Delay incluso para rechazos
+                msg.reply(`⏱️ ${rateCheck.reason}`);
+                return;
+            }
+            
+            // Incrementar descargas si es comando de descarga
+            if (isDownloadCommand) {
+                sessionStats.totalDownloads++;
+            }
+            
+            // Delay humanizado antes de responder (1.5-4 segundos aleatorio)
+            await humanDelay();
+            
+            // Simular "escribiendo..." para comandos largos
+            if (isDownloadCommand) {
+                const chat = await msg.getChat();
+                await simulateTyping(chat);
+            }
         }
 
         // --- COMANDOS DE AUDIO ---
