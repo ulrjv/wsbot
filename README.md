@@ -68,7 +68,7 @@ brew install ffmpeg yt-dlp
 
 ### Opción 2: Instalación con Docker
 
-Para instrucciones detalladas de Docker, consulta [README-DOCKER.md](README-DOCKER.md)
+Para instrucciones detalladas de Docker, consulta [README-DOCKER.md](documentacion/README-DOCKER.md)
 
 **Inicio rápido Docker:**
 
@@ -143,11 +143,13 @@ Para despliegue con Docker, el proyecto incluye:
 - `docker-compose.yml` - Orquestación con volúmenes persistentes
 - `start-docker.ps1` / `start-docker.sh` - Scripts de inicio automático
 
-Ver [README-DOCKER.md](README-DOCKER.md) para instrucciones completas.
+Ver [README-DOCKER.md](documentacion/README-DOCKER.md) para instrucciones completas.
 
-## 📚 Documentación Técnica
+## 📚 Documentación
 
-Para información técnica detallada sobre arquitectura, APIs, seguridad y troubleshooting, consulta [DOCUMENTACION.md](DOCUMENTACION.md).
+- 📖 **[Guía de Inicio Rápido](documentacion/INICIO-RAPIDO.md)** - Instalación paso a paso para principiantes
+- 🐳 **[Guía Docker](documentacion/README-DOCKER.md)** - Despliegue con Docker completo
+- 🔧 **[Documentación Técnica](documentacion/DOCUMENTACION.md)** - Arquitectura, APIs y referencia completa
 
 ## 🔒 Seguridad y Privacidad
 
