@@ -181,6 +181,26 @@ function verificarBlacklist(texto) {
     return blacklist.find(palabra => textoLower.includes(palabra.toLowerCase()));
 }
 
+// Verificar si un usuario es administrador del grupo
+async function isAdmin(msg) {
+    try {
+        const chat = await msg.getChat();
+        
+        // Si no es grupo, retornar false
+        if (!chat.isGroup) return false;
+        
+        // Buscar participante en el grupo
+        const authorId = msg.author || msg.from;
+        const participant = chat.participants.find(p => p.id._serialized === authorId);
+        
+        // Verificar si es admin o superadmin
+        return participant && (participant.isAdmin || participant.isSuperAdmin);
+    } catch (e) {
+        console.error('Error verificando admin:', e);
+        return false;
+    }
+}
+
 // Función para generar hash perceptual de imagen usando IA
 async function getImageHash(imageBuffer) {
     try {
@@ -1067,6 +1087,20 @@ client.on('message', async (msg) => {
         // --- COMANDOS DE BLACKLIST ---
 
         if (comando === '!blacklist') {
+            const chat = await msg.getChat();
+            
+            // Verificar que sea grupo
+            if (!chat.isGroup) {
+                msg.reply('❌ Este comando solo funciona en grupos');
+                return;
+            }
+            
+            // Verificar que sea admin
+            if (!await isAdmin(msg)) {
+                msg.reply('❌ Solo los administradores pueden usar este comando');
+                return;
+            }
+            
             if (args.length === 0) {
                 if (blacklist.length === 0) {
                     msg.reply('📋 La blacklist está vacía');
@@ -1102,6 +1136,20 @@ client.on('message', async (msg) => {
         // --- COMANDO PARA BANEAR IMÁGENES ---
 
         if (comando === '!banimagen') {
+            const chat = await msg.getChat();
+            
+            // Verificar que sea grupo
+            if (!chat.isGroup) {
+                msg.reply('❌ Este comando solo funciona en grupos');
+                return;
+            }
+            
+            // Verificar que sea admin
+            if (!await isAdmin(msg)) {
+                msg.reply('❌ Solo los administradores pueden usar este comando');
+                return;
+            }
+            
             // Subcomandos que no requieren imagen citada
             if (args[0] === 'list') {
                 if (bannedImageHashes.length === 0) {
@@ -1167,6 +1215,20 @@ client.on('message', async (msg) => {
         // --- COMANDO PARA MUTEAR USUARIOS ---
 
         if (comando === '!mutear') {
+            const chat = await msg.getChat();
+            
+            // Verificar que sea grupo
+            if (!chat.isGroup) {
+                msg.reply('❌ Este comando solo funciona en grupos');
+                return;
+            }
+            
+            // Verificar que sea admin
+            if (!await isAdmin(msg)) {
+                msg.reply('❌ Solo los administradores pueden usar este comando');
+                return;
+            }
+            
             const quotedMsg = await msg.getQuotedMessage();
             
             if (!quotedMsg) {
