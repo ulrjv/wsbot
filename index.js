@@ -13,6 +13,27 @@ const readline = require('readline');
 const axios = require('axios');
 const execFileAsync = promisify(execFile);
 
+// ==========================================
+// WHITELIST DE MODERADORES
+// ==========================================
+// Números autorizados para usar comandos de moderación
+// Formato: solo el número sin @c.us ni espacios
+const MODERADORES_AUTORIZADOS = [
+    '36958831165563',    // Admin 1
+    '50499494481',    // Admin 2
+    // Agrega más números aquí si es necesario
+];
+
+function esModerador(msg) {
+    const authorId = msg.author || msg.id.participant || msg.from;
+    const authorNumber = authorId.split('@')[0];
+    
+    const autorizado = MODERADORES_AUTORIZADOS.includes(authorNumber);
+    console.log(`🔐 Verificando moderador: ${authorNumber} - ${autorizado ? '✅ AUTORIZADO' : '❌ NO AUTORIZADO'}`);
+    
+    return autorizado;
+}
+
 // Configurar ffmpeg
 const ffmpegStatic = require('ffmpeg-static');
 
@@ -189,11 +210,39 @@ async function isAdmin(msg) {
         // Si no es grupo, retornar false
         if (!chat.isGroup) return false;
         
-        // Buscar participante en el grupo
-        const authorId = msg.author || msg.from;
-        const participant = chat.participants.find(p => p.id._serialized === authorId);
+        console.log('=== DEBUG COMPLETO msg._data ===');
         
-        // Verificar si es admin o superadmin
+        // Mostrar todos los campos relevantes de _data
+        if (msg._data) {
+            console.log('Campos en msg._data:');
+            Object.keys(msg._data).forEach(key => {
+                if (key.includes('author') || key.includes('sender') || key.includes('participant') || key.includes('from')) {
+                    console.log(`  ${key}:`, msg._data[key]);
+                }
+            });
+        }
+        
+        console.log('msg.author:', msg.author);
+        console.log('msg.from:', msg.from);
+        console.log('msg.id.participant:', msg.id.participant);
+        console.log('================================\n');
+        
+        // El participant del mensaje debe estar en msg.author o msg.id.participant
+        const authorId = msg.author || msg.id.participant || msg.from;
+        const authorNumber = authorId.split('@')[0];
+        
+        // Buscar participante
+        const participant = chat.participants.find(p => {
+            const pNumber = p.id._serialized.split('@')[0];
+            return pNumber === authorNumber;
+        });
+        
+        console.log(`Buscando número: ${authorNumber}`);
+        console.log('Participante encontrado:', participant ? 'SI' : 'NO');
+        if (participant) {
+            console.log(`Admin: ${participant.isAdmin}, SuperAdmin: ${participant.isSuperAdmin}`);
+        }
+        
         return participant && (participant.isAdmin || participant.isSuperAdmin);
     } catch (e) {
         console.error('Error verificando admin:', e);
@@ -310,35 +359,47 @@ async function descargarCancion(url) {
         const timestamp = Date.now();
         const outputPath = path.resolve(`./descargas/audio_${timestamp}.mp3`);
         
-        // Ruta completa de yt-dlp instalado por winget
-        const ytdlpPath = path.join(
-            process.env.LOCALAPPDATA, 
-            'Microsoft', 
-            'WinGet', 
-            'Packages', 
-            'yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe', 
-            'yt-dlp.exe'
-        );
+        // Detectar si estamos en Docker/Linux o Windows
+        let ytdlpPath = 'yt-dlp'; // Por defecto usar yt-dlp del PATH
+        let ffmpegLocation = null;
         
-        // Ruta de ffmpeg instalado por winget
-        const ffmpegDir = path.join(
-            process.env.LOCALAPPDATA,
-            'Microsoft',
-            'WinGet',
-            'Packages',
-            'yt-dlp.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe',
-            'ffmpeg-N-121583-g4348bde2d2-win64-gpl',
-            'bin'
-        );
+        if (process.platform === 'win32' && process.env.LOCALAPPDATA) {
+            // Ruta completa de yt-dlp instalado por winget en Windows
+            ytdlpPath = path.join(
+                process.env.LOCALAPPDATA, 
+                'Microsoft', 
+                'WinGet', 
+                'Packages', 
+                'yt-dlp.yt-dlp_Microsoft.Winget.Source_8wekyb3d8bbwe', 
+                'yt-dlp.exe'
+            );
+            
+            // Ruta de ffmpeg instalado por winget en Windows
+            ffmpegLocation = path.join(
+                process.env.LOCALAPPDATA,
+                'Microsoft',
+                'WinGet',
+                'Packages',
+                'yt-dlp.FFmpeg_Microsoft.Winget.Source_8wekyb3d8bbwe',
+                'ffmpeg-N-121583-g4348bde2d2-win64-gpl',
+                'bin'
+            );
+        }
         
         const args = [
             '-x',
             '--audio-format', 'mp3',
             '--audio-quality', '128K',
-            '--ffmpeg-location', ffmpegDir,
+            '--user-agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            '--extractor-args', 'youtube:player_client=android',
             '-o', outputPath,
             url
         ];
+        
+        // Solo agregar ffmpeg-location si estamos en Windows
+        if (ffmpegLocation) {
+            args.splice(5, 0, '--ffmpeg-location', ffmpegLocation);
+        }
         
         await execFileAsync(ytdlpPath, args);
         
@@ -1095,9 +1156,9 @@ client.on('message', async (msg) => {
                 return;
             }
             
-            // Verificar que sea admin
-            if (!await isAdmin(msg)) {
-                msg.reply('❌ Solo los administradores pueden usar este comando');
+            // Verificar whitelist de moderadores
+            if (!esModerador(msg)) {
+                msg.reply('❌ No tienes permisos para usar este comando');
                 return;
             }
             
@@ -1144,9 +1205,9 @@ client.on('message', async (msg) => {
                 return;
             }
             
-            // Verificar que sea admin
-            if (!await isAdmin(msg)) {
-                msg.reply('❌ Solo los administradores pueden usar este comando');
+            // Verificar whitelist de moderadores
+            if (!esModerador(msg)) {
+                msg.reply('❌ No tienes permisos para usar este comando');
                 return;
             }
             
@@ -1223,9 +1284,9 @@ client.on('message', async (msg) => {
                 return;
             }
             
-            // Verificar que sea admin
-            if (!await isAdmin(msg)) {
-                msg.reply('❌ Solo los administradores pueden usar este comando');
+            // Verificar whitelist de moderadores
+            if (!esModerador(msg)) {
+                msg.reply('❌ No tienes permisos para usar este comando');
                 return;
             }
             

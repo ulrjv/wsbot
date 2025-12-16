@@ -23,7 +23,12 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     ffmpeg \
     ca-certificates \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
+
+# Instalar yt-dlp
+RUN pip3 install --no-cache-dir --upgrade yt-dlp
 
 # Crear directorio de trabajo
 WORKDIR /app
