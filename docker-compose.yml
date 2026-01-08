@@ -4,17 +4,28 @@ services:
     container_name: whatsapp-guardian-bot
     restart: unless-stopped
     volumes:
-      # Persistir sesión de WhatsApp
       - ./.wwebjs_auth:/app/.wwebjs_auth
       - ./.wwebjs_cache:/app/.wwebjs_cache
-      # Persistir datos de moderación
       - ./blacklist.json:/app/blacklist.json
       - ./banned_images.json:/app/banned_images.json
       - ./muted_users.json:/app/muted_users.json
     environment:
       - NODE_ENV=production
       - TZ=Europe/Madrid
-    stdin_open: true  # Para la consola interactiva
-    tty: true         # Para la consola interactiva
-    # Para ver logs: docker-compose logs -f
-    # Para ver QR code: docker-compose logs -f whatsapp-bot
+    stdin_open: true
+    tty: true
+
+  # Este servicio se encarga del reinicio automático
+  restarter:
+    image: docker:cli
+    container_name: bot-restarter
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    # El comando espera 12 horas y luego reinicia el contenedor del bot
+    command: >
+      sh -c "while true; do
+        sleep 43200;
+        echo 'Reiniciando el bot...';
+        docker restart whatsapp-guardian-bot;
+      done"
+    restart: unless-stopped

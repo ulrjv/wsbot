@@ -33,11 +33,12 @@ RUN pip3 install --no-cache-dir --upgrade yt-dlp
 # Crear directorio de trabajo
 WORKDIR /app
 
-# Copiar package.json y package-lock.json
+# Copiar package.json (y package-lock.json si existe)
 COPY package*.json ./
 
-# Instalar dependencias de Node.js
-RUN npm ci --only=production
+# --- CORRECCIÓN AQUÍ ---
+# Cambiamos 'npm ci' por 'npm install' para que funcione sin lockfile
+RUN npm install --only=production
 
 # Copiar el resto de archivos
 COPY index.js ./
